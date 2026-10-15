@@ -1,0 +1,30 @@
+name: invernadero-iot
+
+services:
+  broker:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  nodered:
+    image: nodered/node-red:4.1.15-22
+    ports:
+      - "127.0.0.1:1880:1880"
+    environment:
+      TZ: America/Lima
+    volumes:
+      - nodered_data:/data
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  nodo:
+    image: eclipse-mosquitto:2.0
+    entrypoint: ["mosquitto_pub"]
+    depends_on:
+      - broker
+    profiles: ["manual"]
+
+volumes:
+  nodered_data:

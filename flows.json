@@ -1,0 +1,228 @@
+[
+  {
+    "id": "e1bc5f42c0a04591",
+    "type": "tab",
+    "label": "Invernadero IoT",
+    "disabled": false,
+    "info": "Iluminación simulada por MQTT. Procesamiento y dashboard en Node-RED."
+  },
+  {
+    "id": "58abc0fb32e94e31",
+    "type": "mqtt-broker",
+    "name": "Broker Mosquitto",
+    "broker": "broker",
+    "port": "1883",
+    "clientid": "nodered-invernadero",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {}
+  },
+  {
+    "id": "e46d83171e9140a2",
+    "type": "mqtt in",
+    "z": "e1bc5f42c0a04591",
+    "name": "Suscribirse a lux",
+    "topic": "iot/invernadero/iluminacion",
+    "qos": "1",
+    "datatype": "auto",
+    "broker": "58abc0fb32e94e31",
+    "nl": false,
+    "rap": true,
+    "rh": "0",
+    "inputs": 0,
+    "x": 170,
+    "y": 120,
+    "wires": [
+      [
+        "a83ac44cf60c4d5e"
+      ]
+    ]
+  },
+  {
+    "id": "a83ac44cf60c4d5e",
+    "type": "function",
+    "z": "e1bc5f42c0a04591",
+    "name": "Validar y procesar",
+    "func": "const texto = String(msg.payload).trim();\nif (!/^(?:\\d+)(?:\\.\\d+)?$/.test(texto)) {\n    node.warn('Lectura no numérica: ' + texto);\n    return null;\n}\nconst lux = Number(texto);\nif (!Number.isFinite(lux)) return null;\nconst lectura = { fecha: new Date().toISOString(), lux, estado: lux > 1000 ? 'ALERTA' : 'NORMAL' };\nconst anteriores = flow.get('lecturas') || [];\nanteriores.push(lectura);\nflow.set('lecturas', anteriores.slice(-50));\nnode.status({ fill: lectura.estado === 'ALERTA' ? 'red' : 'green', shape: 'dot', text: `${lux} lux - ${lectura.estado}` });\nreturn [ { payload: lectura }, { payload: `${lectura.fecha},${lux},${lectura.estado}` } ];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 420,
+    "y": 120,
+    "wires": [
+      [
+        "83bdb35b17124daa"
+      ],
+      [
+        "f933a3ca46e9418b"
+      ]
+    ]
+  },
+  {
+    "id": "83bdb35b17124daa",
+    "type": "debug",
+    "z": "e1bc5f42c0a04591",
+    "name": "Mensaje procesado",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 690,
+    "y": 90,
+    "wires": []
+  },
+  {
+    "id": "f933a3ca46e9418b",
+    "type": "file",
+    "z": "e1bc5f42c0a04591",
+    "name": "Guardar lecturas.csv",
+    "filename": "/data/lecturas.csv",
+    "filenameType": "str",
+    "appendNewline": true,
+    "createDir": false,
+    "overwriteFile": "false",
+    "encoding": "none",
+    "x": 690,
+    "y": 150,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "4ab79ae5f74243a9",
+    "type": "http in",
+    "z": "e1bc5f42c0a04591",
+    "name": "Dashboard",
+    "url": "/invernadero",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 150,
+    "y": 260,
+    "wires": [
+      [
+        "6413fbe5124b4fd0"
+      ]
+    ]
+  },
+  {
+    "id": "6413fbe5124b4fd0",
+    "type": "template",
+    "z": "e1bc5f42c0a04591",
+    "name": "Página web",
+    "field": "payload",
+    "fieldType": "msg",
+    "format": "handlebars",
+    "syntax": "mustache",
+    "template": "<!doctype html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n  <title>Iluminación del invernadero</title>\n  <style>\n    :root { color-scheme: dark; font-family: system-ui, Segoe UI, sans-serif; }\n    * { box-sizing: border-box; }\n    body { margin: 0; background: #0e1826; color: #ecf4ef; }\n    .wrap { width: min(1080px, calc(100% - 36px)); margin: 0 auto; padding: 35px 0 50px; }\n    .eyebrow { color: #a3d9ac; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }\n    h1 { font-size: clamp(27px, 4vw, 42px); line-height: 1.12; margin: 9px 0 7px; }\n    .subtitle { color: #a8b8c7; margin: 0 0 27px; }\n    .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; }\n    .card { background: #172638; border: 1px solid #2c4153; border-radius: 17px; padding: 23px; }\n    .label { color: #afbdc8; font-size: 14px; margin-bottom: 12px; }\n    .value { font-size: clamp(56px, 8vw, 90px); line-height: 1; font-weight: 730; font-variant-numeric: tabular-nums; }\n    .unit { font-size: 25px; color: #b8cabc; margin-left: 7px; }\n    .badge { display: inline-block; border-radius: 999px; margin-top: 24px; padding: 9px 15px; font-size: 13px; font-weight: 760; }\n    .normal { color: #b7f2c7; background: #176a46; }\n    .alerta { color: #ffe3d1; background: #a13b25; }\n    .sin-datos { color: #b8c2ca; background: #354758; }\n    .meta { margin-top: 15px; color: #a8b8c7; font-size: 13px; }\n    .smallval { font-size: 28px; font-weight: 700; margin: 8px 0 18px; }\n    .meter { height: 16px; border-radius: 99px; background: #304250; position: relative; overflow: hidden; }\n    .fill { height: 100%; width: 0; background: #64cf88; transition: width .35s; }\n    .threshold { position: absolute; left: 71.43%; top: 0; bottom: 0; width: 2px; background: #f8c26b; }\n    .hint { color: #a8b8c7; font-size: 13px; line-height: 1.55; margin: 17px 0 0; }\n    .wide { margin-top: 18px; }\n    .headrow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }\n    h2 { font-size: 18px; margin: 0 0 15px; }\n    table { width: 100%; border-collapse: collapse; font-size: 14px; }\n    th { color: #b5c4ce; font-weight: 600; text-align: left; }\n    th, td { padding: 11px 8px; border-bottom: 1px solid #2c4153; }\n    td:nth-child(2) { font-variant-numeric: tabular-nums; font-weight: 650; }\n    tr:last-child td { border-bottom: 0; }\n    footer { margin-top: 23px; color: #91a2b2; font-size: 12px; }\n    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .card { padding: 19px; } }\n  </style>\n</head>\n<body>\n  <main class=\"wrap\">\n    <div class=\"eyebrow\">Laboratorio IoT individual · Dato simulado</div>\n    <h1>Iluminación del invernadero</h1>\n    <p class=\"subtitle\">Nodo simulado → broker MQTT → procesamiento → registro y consulta</p>\n    <section class=\"grid\">\n      <article class=\"card\">\n        <div class=\"label\">Última lectura recibida</div>\n        <div><span class=\"value\" id=\"valor\">—</span><span class=\"unit\">lux</span></div>\n        <div class=\"badge sin-datos\" id=\"estado\">ESPERANDO LECTURAS</div>\n        <div class=\"meta\" id=\"fecha\">Publica un valor para empezar.</div>\n      </article>\n      <article class=\"card\">\n        <div class=\"label\">Regla de ejemplo en procesamiento</div>\n        <div class=\"smallval\">Alerta si supera 1000 lux</div>\n        <div class=\"meter\"><div class=\"fill\" id=\"barra\"></div><div class=\"threshold\"></div></div>\n        <p class=\"hint\">La barra muestra de 0 a 1400 lux; la marca amarilla indica el umbral. El valor de 1000 lux es ilustrativo para esta práctica.</p>\n        <p class=\"hint\" id=\"contador\">0 lecturas recibidas en esta sesión</p>\n      </article>\n    </section>\n    <section class=\"card wide\">\n      <div class=\"headrow\"><h2>Lecturas recientes</h2><span class=\"label\">Tópico: iot/invernadero/iluminacion</span></div>\n      <table><thead><tr><th>Fecha y hora</th><th>Iluminación</th><th>Resultado</th></tr></thead><tbody id=\"filas\"><tr><td colspan=\"3\">Todavía no hay lecturas.</td></tr></tbody></table>\n    </section>\n    <footer>Valores generados para la evaluación. El historial completo se agrega a /data/lecturas.csv dentro del contenedor Node-RED.</footer>\n  </main>\n  <script>\n    const valor = document.getElementById('valor');\n    const estado = document.getElementById('estado');\n    const fecha = document.getElementById('fecha');\n    const barra = document.getElementById('barra');\n    const filas = document.getElementById('filas');\n    const contador = document.getElementById('contador');\n    async function actualizar() {\n      try {\n        const r = await fetch('/api/invernadero', {cache: 'no-store'});\n        if (!r.ok) throw new Error('HTTP ' + r.status);\n        const datos = await r.json();\n        const lecturas = datos.lecturas;\n        contador.textContent = lecturas.length + ' lecturas recientes recibidas';\n        if (!lecturas.length) return;\n        const ultimo = lecturas[lecturas.length - 1];\n        valor.textContent = ultimo.lux;\n        estado.textContent = ultimo.estado;\n        estado.className = 'badge ' + (ultimo.estado === 'ALERTA' ? 'alerta' : 'normal');\n        fecha.textContent = 'Recibida: ' + new Date(ultimo.fecha).toLocaleString('es-PE');\n        barra.style.width = Math.min(100, ultimo.lux / 1400 * 100) + '%';\n        barra.style.background = ultimo.estado === 'ALERTA' ? '#f07659' : '#64cf88';\n        filas.replaceChildren();\n        for (const item of lecturas.slice(-12).reverse()) {\n          const tr = document.createElement('tr');\n          for (const texto of [new Date(item.fecha).toLocaleString('es-PE'), item.lux + ' lux', item.estado]) {\n            const td = document.createElement('td');\n            td.textContent = texto;\n            tr.appendChild(td);\n          }\n          filas.appendChild(tr);\n        }\n      } catch (err) {\n        fecha.textContent = 'Sin conexión con el procesamiento: ' + err.message;\n      }\n    }\n    actualizar();\n    setInterval(actualizar, 2000);\n  </script>\n</body>\n</html>",
+    "output": "str",
+    "x": 370,
+    "y": 260,
+    "wires": [
+      [
+        "fcf980731a7f49cc"
+      ]
+    ]
+  },
+  {
+    "id": "fcf980731a7f49cc",
+    "type": "function",
+    "z": "e1bc5f42c0a04591",
+    "name": "Tipo HTML",
+    "func": "msg.headers = {'content-type':'text/html; charset=utf-8', 'cache-control':'no-store'};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 550,
+    "y": 260,
+    "wires": [
+      [
+        "c6732c92bcab4a16"
+      ]
+    ]
+  },
+  {
+    "id": "c6732c92bcab4a16",
+    "type": "http response",
+    "z": "e1bc5f42c0a04591",
+    "name": "Enviar página",
+    "statusCode": "",
+    "headers": {},
+    "x": 740,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "69f5868144b7405b",
+    "type": "http in",
+    "z": "e1bc5f42c0a04591",
+    "name": "Consultar lecturas",
+    "url": "/api/invernadero",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 165,
+    "y": 340,
+    "wires": [
+      [
+        "87f9301837124b1a"
+      ]
+    ]
+  },
+  {
+    "id": "87f9301837124b1a",
+    "type": "function",
+    "z": "e1bc5f42c0a04591",
+    "name": "Leer últimas 50",
+    "func": "msg.headers = {'content-type':'application/json; charset=utf-8','cache-control':'no-store'};\nmsg.payload = JSON.stringify({ topico: 'iot/invernadero/iluminacion', umbralLux: 1000, lecturas: flow.get('lecturas') || [] });\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 410,
+    "y": 340,
+    "wires": [
+      [
+        "72db163c5945468d"
+      ]
+    ]
+  },
+  {
+    "id": "72db163c5945468d",
+    "type": "http response",
+    "z": "e1bc5f42c0a04591",
+    "name": "Enviar JSON",
+    "statusCode": "",
+    "headers": {},
+    "x": 710,
+    "y": 340,
+    "wires": []
+  }
+]
