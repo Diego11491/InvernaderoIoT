@@ -91,6 +91,6 @@ Al terminar puedes pulsar `Ctrl+C` en el suscriptor y detener los servicios con 
 
 - `compose.yaml`, `mosquitto.conf` y `flows.json`: configuración y flujo del prototipo.
 - `datos/lecturas.csv`: lecturas registradas durante la prueba.
-- `docs/Informe_Laboratorio_IoT_Invernadero_Diego_Ventura.docx`: informe con capturas, explicación del recorrido del dato y cuestionario adaptado.
+- El informe final se entrega como archivo adjunto por correo.
 
 Se probaron las lecturas de 180, 350, 520, 750 y 900 lux. La prueba adicional de 1250 lux llegó al dashboard y fue clasificada como ALERTA mediante un umbral de demostración de 1000 lux.
